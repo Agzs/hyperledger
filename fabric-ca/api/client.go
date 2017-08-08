@@ -19,7 +19,7 @@ package api
 import (
 	"time"
 
-	"github.com/cloudflare/cfssl/csr"
+	"github.com/cloudflare/cfssl/csr" //CloudFlare's PKI toolkit
 	"github.com/hyperledger/fabric-ca/lib/tcert"
 )
 

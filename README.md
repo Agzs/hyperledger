@@ -7,5 +7,6 @@
 ## v0.6 branch:
 * fabric: 0.6 version
 
-注：更多资料，请参阅[wiki](https://github.com/Agzs/Hyperledger/wiki)
+Note, more detail information，see the [wiki](https://github.com/Agzs/Hyperledger/wiki)
+
 

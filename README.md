@@ -7,5 +7,5 @@
 ## v0.6 branch:
 * fabric: 0.6 version
 
-注：hp一体机test.
+注：更多资料，请参阅[wiki](https://github.com/Agzs/Hyperledger/wiki)
 

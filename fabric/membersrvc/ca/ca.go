@@ -983,7 +983,7 @@ func removeQuotes(str string) string {
 
 // Convert the protobuf array of attributes to the AttributePair array format
 // as required by the ACA code to populate the table
-// 将属性的protobuf数组按照ACA代码的要求将AttributePair数组格式转换为填充表。
+// 将属性的protobuf数组按照ACA代码的要求将AttributePair数组格式转换为表格填充。
 func toAttributePairs(id, affiliation string, attrs []*pb.Attribute) ([]*AttributePair, error) {
 	var pairs = make([]*AttributePair, 0) // 初始化属性对 表
 	for _, attr := range attrs {

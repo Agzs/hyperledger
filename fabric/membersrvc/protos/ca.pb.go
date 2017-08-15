@@ -361,6 +361,7 @@ func (m *Registrar) GetId() *Identity {
 	return nil
 }
 
+// 注册用户发送的请求
 type RegisterUserReq struct {
 	Id          *Identity    `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
 	Role        Role         `protobuf:"varint,2,opt,name=role,enum=protos.Role" json:"role,omitempty"`

@@ -382,7 +382,7 @@ func (aca *ACA) findAttribute(owner *AttributeOwner, attributeName string) (*Att
 
 // 启动ACAP(为ACA的管理员gRPC接口提供服务)
 func (aca *ACA) startACAP(srv *grpc.Server) {
-	pb.RegisterACAPServer(srv, &ACAP{aca}) // 注册ACAP服务器
+	pb.RegisterACAPServer(srv, &ACAP{aca}) // 注册ACAP服务
 	acaLogger.Info("ACA PUBLIC gRPC API server started")
 }
 

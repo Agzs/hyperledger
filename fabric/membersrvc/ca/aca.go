@@ -43,17 +43,18 @@ var (
 )
 
 // ACA is the attribute certificate authority.
-type ACA struct {
+type ACA struct { // 属性CA
 	*CA                     //定义CA结构体
 	gRPCServer *grpc.Server // Server is a gRPC server to serve RPC requests.
 }
 
 // ACAA serves the administrator GRPC interface of the ACA.
 type ACAA struct {
-	aca *ACA
+	aca *ACA // 属性CA
 }
 
 //IsAttributeOID returns if the oid passed as parameter is or not linked with an attribute
+// 判断oid是否是属性值
 func IsAttributeOID(oid asn1.ObjectIdentifier) bool {
 	l := len(oid)
 	if len(ACAAttribute) != l {
@@ -68,6 +69,7 @@ func IsAttributeOID(oid asn1.ObjectIdentifier) bool {
 	return ACAAttribute[l-1] < oid[l-1]
 }
 
+// 初始化ACA表格 Attributes表格
 func initializeACATables(db *sql.DB) error {
 	if _, err := db.Exec("CREATE TABLE IF NOT EXISTS Attributes (row INTEGER PRIMARY KEY, id VARCHAR(64), affiliation VARCHAR(64), attributeName VARCHAR(64), validFrom DATETIME, validTo DATETIME,  attributeValue BLOB)"); err != nil {
 		return err
@@ -76,19 +78,19 @@ func initializeACATables(db *sql.DB) error {
 }
 
 //AttributeOwner is the struct that contains the data related with the user who owns the attribute.
-type AttributeOwner struct {
-	id          string
-	affiliation string
+type AttributeOwner struct { // 用户属性
+	id          string // 用户id
+	affiliation string // 用户隶属关系
 }
 
 //AttributePair is an struct that store the relation between an owner (user who owns the attribute), attributeName (name of the attribute), attributeValue (value of the attribute),
 //validFrom (time since the attribute is valid) and validTo (time until the attribute will be valid).
-type AttributePair struct {
-	owner          *AttributeOwner
-	attributeName  string
-	attributeValue []byte
-	validFrom      time.Time
-	validTo        time.Time
+type AttributePair struct { // 属性对
+	owner          *AttributeOwner // 属性所有者
+	attributeName  string          // 属性名称
+	attributeValue []byte          // 属性值
+	validFrom      time.Time       // 属性生效时间
+	validTo        time.Time       // 属性失效时间
 }
 
 //NewAttributePair creates a new attribute pair associated with <attrOwner>.
@@ -202,7 +204,7 @@ func (attrPair *AttributePair) SetValidTo(date time.Time) {
 	attrPair.validTo = date
 }
 
-//ToACAAttribute converts the receiver to the protobuf format.
+//ToACAAttribute converts the receiver to the protobuf format.格式转换
 func (attrPair *AttributePair) ToACAAttribute() *pb.ACAAttribute {
 	var from, to *timestamp.Timestamp
 	if attrPair.validFrom.IsZero() {
@@ -226,14 +228,16 @@ func NewACA() *ACA {
 	return aca
 }
 
+// 获取ECA证书
 func (aca *ACA) getECACertificate() (*x509.Certificate, error) {
-	raw, err := aca.readCACertificate("eca")
+	raw, err := aca.readCACertificate("eca") // readCACertificate是CA的函数，aca是ACA的实例,为什么不是aca.CA.readCACertificate? 见本程序403行
 	if err != nil {
 		return nil, err
 	}
-	return x509.ParseCertificate(raw)
+	return x509.ParseCertificate(raw) //解析为X509证书格式
 }
 
+// 获取TCA证书
 func (aca *ACA) getTCACertificate() (*x509.Certificate, error) {
 	raw, err := aca.readCACertificate("tca")
 	if err != nil {
@@ -242,19 +246,20 @@ func (aca *ACA) getTCACertificate() (*x509.Certificate, error) {
 	return x509.ParseCertificate(raw)
 }
 
+// 获取属性
 func (aca *ACA) fetchAttributes(id, affiliation string) ([]*AttributePair, error) {
 	// TODO this attributes should be readed from the outside world in place of configuration file.
 	var attributes = make([]*AttributePair, 0)
 	attrs := viper.GetStringMapString("aca.attributes")
 
 	for _, flds := range attrs {
-		vals := strings.Fields(flds)
+		vals := strings.Fields(flds) //根据一个或多个空格符，将vals划分成多个子串
 		if len(vals) >= 1 {
 			val := ""
-			for _, eachVal := range vals {
+			for _, eachVal := range vals { // 每个子串以空格符为间隔串接成一个串
 				val = val + " " + eachVal
 			}
-			attributeVals := strings.Split(val, ";")
+			attributeVals := strings.Split(val, ";") // 将val分割成由分号分隔的所有子字符串 ？？？哪来的分号？？？
 			if len(attributeVals) >= 6 {
 				attrPair, err := NewAttributePair(attributeVals, nil)
 				if err != nil {
@@ -275,6 +280,7 @@ func (aca *ACA) fetchAttributes(id, affiliation string) ([]*AttributePair, error
 	return attributes, nil
 }
 
+// 多属性填充
 func (aca *ACA) PopulateAttributes(attrs []*AttributePair) error {
 
 	acaLogger.Debugf("PopulateAttributes: %+v", attrs)
@@ -282,31 +288,32 @@ func (aca *ACA) PopulateAttributes(attrs []*AttributePair) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	tx, dberr := aca.db.Begin()
+	tx, dberr := aca.db.Begin() // 启动一笔交易
 	if dberr != nil {
 		return dberr
 	}
 	for _, attr := range attrs {
 		acaLogger.Debugf("attr: %+v", attr)
-		if err := aca.populateAttribute(tx, attr); err != nil {
-			dberr = tx.Rollback()
+		if err := aca.populateAttribute(tx, attr); err != nil { // 单数性填充
+			dberr = tx.Rollback() // 属性填充出错，回退
 			if dberr != nil {
 				return dberr
 			}
 			return err
 		}
 	}
-	dberr = tx.Commit()
+	dberr = tx.Commit() // commit 交易
 	if dberr != nil {
 		return dberr
 	}
 	return nil
 }
 
+// 单属性填充
 func (aca *ACA) populateAttribute(tx *sql.Tx, attr *AttributePair) error {
 	var count int
 	err := tx.QueryRow("SELECT count(row) AS cant FROM Attributes WHERE id=? AND affiliation =? AND attributeName =?",
-		attr.GetID(), attr.GetAffiliation(), attr.GetAttributeName()).Scan(&count)
+		attr.GetID(), attr.GetAffiliation(), attr.GetAttributeName()).Scan(&count) // 将查询结果中匹配tx的复制到count中
 
 	if err != nil {
 		return err
@@ -314,7 +321,7 @@ func (aca *ACA) populateAttribute(tx *sql.Tx, attr *AttributePair) error {
 
 	if count > 0 {
 		_, err = tx.Exec("UPDATE Attributes SET validFrom = ?, validTo = ?,  attributeValue = ? WHERE  id=? AND affiliation =? AND attributeName =? AND validFrom < ?",
-			attr.GetValidFrom(), attr.GetValidTo(), attr.GetAttributeValue(), attr.GetID(), attr.GetAffiliation(), attr.GetAttributeName(), attr.GetValidFrom())
+			attr.GetValidFrom(), attr.GetValidTo(), attr.GetAttributeValue(), attr.GetID(), attr.GetAffiliation(), attr.GetAttributeName(), attr.GetValidFrom()) // 更新表格
 		if err != nil {
 			return err
 		}
@@ -328,25 +335,28 @@ func (aca *ACA) populateAttribute(tx *sql.Tx, attr *AttributePair) error {
 	return nil
 }
 
+// 根据id和隶属关系获取并填充用户的多个属性
 func (aca *ACA) fetchAndPopulateAttributes(id, affiliation string) error {
 	var attrs []*AttributePair
-	attrs, err := aca.fetchAttributes(id, affiliation)
+	attrs, err := aca.fetchAttributes(id, affiliation) // 获取属性
 	if err != nil {
 		return err
 	}
-	err = aca.PopulateAttributes(attrs)
+	err = aca.PopulateAttributes(attrs) // 填充多个属性
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
+// 根据属性所有者和属性名 查询属性
 func (aca *ACA) findAttribute(owner *AttributeOwner, attributeName string) (*AttributePair, error) {
 	var count int
 
-	mutex.RLock()
-	defer mutex.RUnlock()
+	mutex.RLock()         // 互斥，上锁
+	defer mutex.RUnlock() // 解锁
 
+	// 先查询是否存在
 	err := aca.db.QueryRow("SELECT count(row) AS cant FROM Attributes WHERE id=? AND affiliation =? AND attributeName =?",
 		owner.GetID(), owner.GetAffiliation(), attributeName).Scan(&count)
 	if err != nil {
@@ -357,6 +367,7 @@ func (aca *ACA) findAttribute(owner *AttributeOwner, attributeName string) (*Att
 		return nil, nil
 	}
 
+	// 能执行到此步，说明要查询的属性存在，下面获取其值
 	var attName string
 	var attValue []byte
 	var validFrom, validTo time.Time
@@ -369,12 +380,13 @@ func (aca *ACA) findAttribute(owner *AttributeOwner, attributeName string) (*Att
 	return &AttributePair{owner, attName, attValue, validFrom, validTo}, nil
 }
 
+// 启动ACAP(为ACA的管理员gRPC接口提供服务)
 func (aca *ACA) startACAP(srv *grpc.Server) {
-	pb.RegisterACAPServer(srv, &ACAP{aca})
+	pb.RegisterACAPServer(srv, &ACAP{aca}) // 注册ACAP服务器
 	acaLogger.Info("ACA PUBLIC gRPC API server started")
 }
 
-// Start starts the ACA.
+// Start starts the ACA. 启动
 func (aca *ACA) Start(srv *grpc.Server) {
 	acaLogger.Info("Staring ACA services...")
 	aca.startACAP(srv)
@@ -382,7 +394,7 @@ func (aca *ACA) Start(srv *grpc.Server) {
 	acaLogger.Info("ACA services started")
 }
 
-// Stop stops the ACA
+// Stop stops the ACA. 停止
 func (aca *ACA) Stop() error {
 	acaLogger.Info("Stopping the ACA services...")
 	if aca.gRPCServer != nil {

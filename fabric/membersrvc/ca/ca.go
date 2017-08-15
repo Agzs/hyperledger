@@ -86,7 +86,7 @@ var (
 	caDir          string            //server.cadir
 )
 
-// NewCertificateSpec creates a new certificate spec
+// NewCertificateSpec creates a new certificate spec，新证书规格
 func NewCertificateSpec(id string, commonName string, serialNumber *big.Int, pub interface{}, usage x509.KeyUsage, notBefore *time.Time, notAfter *time.Time, opt ...pkix.Extension) *CertificateSpec {
 	spec := new(CertificateSpec)
 	spec.id = id
@@ -104,13 +104,13 @@ func NewCertificateSpec(id string, commonName string, serialNumber *big.Int, pub
 // 4 >> 2
 
 // NewDefaultPeriodCertificateSpec creates a new certificate spec with notBefore a minute ago and not after 90 days from notBefore.
-// 1，新的默认期限证书
+// 1，新的默认期限证书规格
 func NewDefaultPeriodCertificateSpec(id string, serialNumber *big.Int, pub interface{}, usage x509.KeyUsage, opt ...pkix.Extension) *CertificateSpec {
 	return NewDefaultPeriodCertificateSpecWithCommonName(id, id, serialNumber, pub, usage, opt...)
 }
 
 // NewDefaultPeriodCertificateSpecWithCommonName creates a new certificate spec with notBefore a minute ago and not after 90 days from notBefore and a specifc commonName.
-// 2，有通用名称的新的默认期限证书
+// 2，有通用名称的新的默认期限证书规格
 func NewDefaultPeriodCertificateSpecWithCommonName(id string, commonName string, serialNumber *big.Int, pub interface{}, usage x509.KeyUsage, opt ...pkix.Extension) *CertificateSpec {
 	notBefore := time.Now().Add(-1 * time.Minute)
 	notAfter := notBefore.Add(time.Hour * 24 * 90)
@@ -118,14 +118,14 @@ func NewDefaultPeriodCertificateSpecWithCommonName(id string, commonName string,
 }
 
 // NewDefaultCertificateSpec creates a new certificate spec with serialNumber = 1, notBefore a minute ago and not after 90 days from notBefore.
-// 3，序列号为1的默认期限证书
+// 3，序列号为1的默认期限证书规格
 func NewDefaultCertificateSpec(id string, pub interface{}, usage x509.KeyUsage, opt ...pkix.Extension) *CertificateSpec {
 	serialNumber := big.NewInt(1)
 	return NewDefaultPeriodCertificateSpec(id, serialNumber, pub, usage, opt...)
 }
 
 // NewDefaultCertificateSpecWithCommonName creates a new certificate spec with serialNumber = 1, notBefore a minute ago and not after 90 days from notBefore and a specific commonName.
-// 4，有通用名称且序列号为1的默认期限证书
+// 4，有通用名称且序列号为1的默认期限证书规格
 func NewDefaultCertificateSpecWithCommonName(id string, commonName string, pub interface{}, usage x509.KeyUsage, opt ...pkix.Extension) *CertificateSpec {
 	serialNumber := big.NewInt(1)
 	return NewDefaultPeriodCertificateSpecWithCommonName(id, commonName, serialNumber, pub, usage, opt...)
@@ -366,7 +366,7 @@ func (ca *CA) readCACertificate(name string) ([]byte, error) {
 	return block.Bytes, nil
 }
 
-// 通过调用3创建证书，然后加上时间戳
+// 通过调用3创建证书规格，然后加上时间戳
 func (ca *CA) createCertificate(id string, pub interface{}, usage x509.KeyUsage, timestamp int64, kdfKey []byte, opt ...pkix.Extension) ([]byte, error) {
 	spec := NewDefaultCertificateSpec(id, pub, usage, opt...)
 	return ca.createCertificateFromSpec(spec, timestamp, kdfKey, true)

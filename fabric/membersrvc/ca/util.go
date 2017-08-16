@@ -26,13 +26,14 @@ import (
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
-	letterIdxBits = 6                    // 6 bits to represent a letter index
-	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+	letterIdxBits = 6                    // 6 bits to represent a letter index 单字母下标 6 bits
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits   所有单bit的
+	letterIdxMax  = 63 / letterIdxBits   // # of letter indices fitting in 63 bits   字符 # ？？？
 )
 
 var rnd = mrand.NewSource(time.Now().UnixNano())
 
+// 随机化长度为n的字符串
 func randomString(n int) string {
 	b := make([]byte, n)
 
@@ -54,7 +55,7 @@ func randomString(n int) string {
 //
 // MemberRoleToString converts a member role representation from int32 to a string,
 // according to the Role enum defined in ca.proto.
-//
+// 将代表角色的数字转换成该角色的实际名称（字符创形式）
 func MemberRoleToString(role pb.Role) (string, error) {
 	roleMap := pb.Role_name
 

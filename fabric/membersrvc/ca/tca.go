@@ -49,31 +49,32 @@ var (
 	Padding = []byte{255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255}
 
 	// RootPreKeySize for attribute encryption keys derivation
-	RootPreKeySize = 48
+	RootPreKeySize = 48 // 用于属性加密密钥派生
 )
 
 // TCA is the transaction certificate authority.
 type TCA struct {
-	*CA
-	eca        *ECA
-	hmacKey    []byte
-	rootPreKey []byte
-	preKeys    map[string][]byte
-	gRPCServer *grpc.Server
+	*CA                          // CA
+	eca        *ECA              // ECA (enrollment)
+	hmacKey    []byte            // 用于hmac(消息摘要)的密钥
+	rootPreKey []byte            // 根密钥，用于属性加密密钥的派生？？？
+	preKeys    map[string][]byte // 属性加密密钥？？？
+	gRPCServer *grpc.Server      // gRPC服务器
 }
 
 // TCertSet contains relevant information of a set of tcerts
 type TCertSet struct {
-	Ts           int64
-	EnrollmentID string
-	Nonce        []byte
-	Key          []byte
+	Ts           int64  // 时间戳
+	EnrollmentID string // 注册ID
+	Nonce        []byte // 随机值
+	Key          []byte // 密钥，用于 ？？？
 }
 
+// 初始化TCA表格:TCertificateSets (row, enrollmentID, timestamp, nonce, kdfKey)
 func initializeTCATables(db *sql.DB) error {
 	var err error
 
-	err = initializeCommonTables(db)
+	err = initializeCommonTables(db) // 调用ca.go中的函数，初始化公共表格
 	if err != nil {
 		return err
 	}
@@ -85,22 +86,22 @@ func initializeTCATables(db *sql.DB) error {
 	return err
 }
 
-// NewTCA sets up a new TCA.
+// NewTCA sets up a new TCA. 设置新TCA
 func NewTCA(eca *ECA) *TCA {
-	tca := &TCA{NewCA("tca", initializeTCATables), eca, nil, nil, nil, nil}
+	tca := &TCA{NewCA("tca", initializeTCATables), eca, nil, nil, nil, nil} // 初始化含有CA、eca的tca实例
 	flogging.LoggingInit("tca")
 
-	err := tca.readHmacKey()
+	err := tca.readHmacKey() // 从文件系统读取hmac密钥。
 	if err != nil {
 		tcaLogger.Panic(err)
 	}
 
-	err = tca.readRootPreKey()
+	err = tca.readRootPreKey() // 从文件系统中读取
 	if err != nil {
 		tcaLogger.Panic(err)
 	}
 
-	err = tca.initializePreKeyTree()
+	err = tca.initializePreKeyTree() // 初始化用于属性加密的密钥树
 	if err != nil {
 		tcaLogger.Panic(err)
 	}
@@ -110,34 +111,34 @@ func NewTCA(eca *ECA) *TCA {
 // Read the hcmac key from the file system.
 func (tca *TCA) readHmacKey() error {
 	var cooked string
-	raw, err := ioutil.ReadFile(tca.path + "/tca.hmac")
+	raw, err := ioutil.ReadFile(tca.path + "/tca.hmac") // 读取tca.hmac文件内容
 	if err != nil {
 		key := make([]byte, 49)
-		rand.Reader.Read(key)
-		cooked = base64.StdEncoding.EncodeToString(key)
+		rand.Reader.Read(key)                           // 读取最多len(key)个字节到key中
+		cooked = base64.StdEncoding.EncodeToString(key) // cooked是key的base64编码
 
-		err = ioutil.WriteFile(tca.path+"/tca.hmac", []byte(cooked), 0644)
+		err = ioutil.WriteFile(tca.path+"/tca.hmac", []byte(cooked), 0644) // 写入文件，文件有相应的权限
 		if err != nil {
 			tcaLogger.Panic(err)
 		}
 	} else {
-		cooked = string(raw)
+		cooked = string(raw) // 强制类型转换
 	}
 
-	tca.hmacKey, err = base64.StdEncoding.DecodeString(cooked)
+	tca.hmacKey, err = base64.StdEncoding.DecodeString(cooked) // base64解码
 	return err
 }
 
 // Read the root pre key from the file system.
 func (tca *TCA) readRootPreKey() error {
 	var cooked string
-	raw, err := ioutil.ReadFile(tca.path + "/root_pk.hmac")
+	raw, err := ioutil.ReadFile(tca.path + "/root_pk.hmac") // 读取root_pk.hmac文件内容
 	if err != nil {
-		key := make([]byte, RootPreKeySize)
-		rand.Reader.Read(key)
-		cooked = base64.StdEncoding.EncodeToString(key)
+		key := make([]byte, RootPreKeySize)             // key 应该是之前的rootPreKey
+		rand.Reader.Read(key)                           // 读取最多len(key)个字节到key中
+		cooked = base64.StdEncoding.EncodeToString(key) // cooked是key的base64编码
 
-		err = ioutil.WriteFile(tca.path+"/root_pk.hmac", []byte(cooked), 0644)
+		err = ioutil.WriteFile(tca.path+"/root_pk.hmac", []byte(cooked), 0644) // 写入文件，文件有相应的权限
 		if err != nil {
 			tcaLogger.Panic(err)
 		}
@@ -145,47 +146,51 @@ func (tca *TCA) readRootPreKey() error {
 		cooked = string(raw)
 	}
 
-	tca.rootPreKey, err = base64.StdEncoding.DecodeString(cooked)
+	tca.rootPreKey, err = base64.StdEncoding.DecodeString(cooked) // base64解码
 	return err
 }
 
+// 计算密钥
 func (tca *TCA) calculatePreKey(variant []byte, preKey []byte) ([]byte, error) {
-	mac := hmac.New(primitives.GetDefaultHash(), preKey)
-	_, err := mac.Write(variant)
+	mac := hmac.New(primitives.GetDefaultHash(), preKey) // 使用给定的参数返回一个新的HMAC散列。
+	_, err := mac.Write(variant)                         // 从variant写入len(variant)个字节到底层数据流。
 	if err != nil {
 		return nil, err
 	}
-	return mac.Sum(nil), nil
+	return mac.Sum(nil), nil // Sum追加当前哈希并返回所生成的切片。
 }
 
+// 初始化非根组的PreKey
 func (tca *TCA) initializePreKeyNonRootGroup(group *AffiliationGroup) error {
 	if group.parent.preKey == nil {
 		//Initialize parent if it is not initialized yet.
-		tca.initializePreKeyGroup(group.parent)
+		tca.initializePreKeyGroup(group.parent) // 初始化父隶属关系
 	}
 	var err error
-	group.preKey, err = tca.calculatePreKey([]byte(group.name), group.parent.preKey)
+	group.preKey, err = tca.calculatePreKey([]byte(group.name), group.parent.preKey) // 使用父组的密钥生成本组密钥
 	return err
 }
 
+// 初始化根组preKey
 func (tca *TCA) initializePreKeyGroup(group *AffiliationGroup) error {
 	if group.parentID == 0 {
 		//This group is root
-		group.preKey = tca.rootPreKey
+		group.preKey = tca.rootPreKey // 根密钥
 		return nil
 	}
-	return tca.initializePreKeyNonRootGroup(group)
+	return tca.initializePreKeyNonRootGroup(group) // 初始化非根组的PreKey
 }
 
+// 初始化密钥树
 func (tca *TCA) initializePreKeyTree() error {
 	tcaLogger.Debug("Initializing PreKeys.")
-	groups, err := tca.eca.readAffiliationGroups()
+	groups, err := tca.eca.readAffiliationGroups() // 读取隶属关系组， 等价于tca.eca.CA.readAffiliationGroups()
 	if err != nil {
 		return err
 	}
 	tca.preKeys = make(map[string][]byte)
-	for _, group := range groups {
-		if group.preKey == nil {
+	for _, group := range groups { // 依次读取隶属关系
+		if group.preKey == nil { // 初始化组密钥
 			err = tca.initializePreKeyGroup(group)
 			if err != nil {
 				return err
@@ -198,34 +203,35 @@ func (tca *TCA) initializePreKeyTree() error {
 	return nil
 }
 
+// 获取当前隶属关系密钥
 func (tca *TCA) getPreKFrom(enrollmentCertificate *x509.Certificate) ([]byte, error) {
-	_, affiliation, err := tca.eca.parseEnrollID(enrollmentCertificate.Subject.CommonName)
+	_, affiliation, err := tca.eca.parseEnrollID(enrollmentCertificate.Subject.CommonName) // 解析注册ID
 	if err != nil {
 		return nil, err
 	}
-	preK := tca.preKeys[affiliation]
+	preK := tca.preKeys[affiliation] // 获取当前组的密钥
 	if preK == nil {
 		return nil, errors.New("Could not be found a pre-k to the affiliation group " + affiliation + ".")
 	}
 	return preK, nil
 }
 
-// Start starts the TCA.
+// Start starts the TCA. 启动TCA服务
 func (tca *TCA) Start(srv *grpc.Server) {
 	tcaLogger.Info("Staring TCA services...")
-	tca.startTCAP(srv)
-	tca.startTCAA(srv)
+	tca.startTCAP(srv) // 启动TCAP服务
+	tca.startTCAA(srv) // 启动TCAA服务
 	tca.gRPCServer = srv
 	tcaLogger.Info("TCA started.")
 }
 
-// Stop stops the TCA services.
+// Stop stops the TCA services. 停止TCA服务
 func (tca *TCA) Stop() error {
 	tcaLogger.Info("Stopping the TCA services...")
 	if tca.gRPCServer != nil {
-		tca.gRPCServer.Stop()
+		tca.gRPCServer.Stop() // 停止gRPC服务器
 	}
-	err := tca.CA.Stop()
+	err := tca.CA.Stop() // 停止CA服务
 	if err != nil {
 		tcaLogger.Errorf("Error stopping TCA services: %s", err)
 	} else {
@@ -234,40 +240,43 @@ func (tca *TCA) Stop() error {
 	return err
 }
 
+// 启动TCAP(为TCA的公共gRPC接口服务) 服务
 func (tca *TCA) startTCAP(srv *grpc.Server) {
-	pb.RegisterTCAPServer(srv, &TCAP{tca})
+	pb.RegisterTCAPServer(srv, &TCAP{tca}) // 注册tcap服务器
 	tcaLogger.Info("TCA PUBLIC gRPC API server started")
 }
 
+// 启动TCAA(为TCA的管理员gRPC接口提供服务) 服务
 func (tca *TCA) startTCAA(srv *grpc.Server) {
-	pb.RegisterTCAAServer(srv, &TCAA{tca})
+	pb.RegisterTCAAServer(srv, &TCAA{tca}) // 注册TCAA服务器
 	tcaLogger.Info("TCA ADMIN gRPC API server started")
 }
 
+// 获取Tcert证书集
 func (tca *TCA) getCertificateSets(enrollmentID string) ([]*TCertSet, error) {
-	mutex.RLock()
+	mutex.RLock() // 互斥
 	defer mutex.RUnlock()
 
 	var sets = []*TCertSet{}
 	var err error
 
 	var rows *sql.Rows
-	rows, err = tca.retrieveCertificateSets(enrollmentID)
+	rows, err = tca.retrieveCertificateSets(enrollmentID) // 检索证书集
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer rows.Close() // 最后执行，关闭结果集
 
 	var enrollID string
 	var timestamp int64
 	var nonce []byte
 	var kdfKey []byte
 
-	for rows.Next() {
-		if err = rows.Scan(&enrollID, &timestamp, &nonce, &kdfKey); err != nil {
+	for rows.Next() { // 依次读取每条结果
+		if err = rows.Scan(&enrollID, &timestamp, &nonce, &kdfKey); err != nil { // 将每条结果的内容，复制到相匹配的变量中
 			return nil, err
 		}
-		sets = append(sets, &TCertSet{Ts: timestamp, EnrollmentID: enrollID, Key: kdfKey})
+		sets = append(sets, &TCertSet{Ts: timestamp, EnrollmentID: enrollID, Key: kdfKey}) // 追加到数组中
 	}
 	if err = rows.Err(); err != nil {
 		return nil, err
@@ -276,8 +285,9 @@ func (tca *TCA) getCertificateSets(enrollmentID string) ([]*TCertSet, error) {
 	return sets, nil
 }
 
+// 存储证书
 func (tca *TCA) persistCertificateSet(enrollmentID string, timestamp int64, nonce []byte, kdfKey []byte) error {
-	mutex.Lock()
+	mutex.Lock() // 互斥
 	defer mutex.Unlock()
 
 	var err error
@@ -288,6 +298,7 @@ func (tca *TCA) persistCertificateSet(enrollmentID string, timestamp int64, nonc
 	return err
 }
 
+// 根据注册ID检索证书集
 func (tca *TCA) retrieveCertificateSets(enrollmentID string) (*sql.Rows, error) {
 	return tca.db.Query("SELECT enrollmentID, timestamp, nonce, kdfkey FROM TCertificateSets WHERE enrollmentID=?", enrollmentID)
 }

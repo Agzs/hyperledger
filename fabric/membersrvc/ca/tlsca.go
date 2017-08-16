@@ -54,12 +54,13 @@ type TLSCAA struct {
 	tlsca *TLSCA
 }
 
+// 初始化TLSCA的表格，调用ca.go中的函数，初始化公共表格：Certificates、Users、AffiliationGroups
 func initializeTLSCATables(db *sql.DB) error {
 	return initializeCommonTables(db)
 }
 
 // NewTLSCA sets up a new TLSCA.
-//
+// 设置新的TLSCA
 func NewTLSCA(eca *ECA) *TLSCA {
 	tlsca := &TLSCA{NewCA("tlsca", initializeTLSCATables), eca, nil}
 	flogging.LoggingInit("tlsca")
@@ -68,23 +69,25 @@ func NewTLSCA(eca *ECA) *TLSCA {
 }
 
 // Start starts the TLSCA.
-//
+// 启动TLSCA服务
 func (tlsca *TLSCA) Start(srv *grpc.Server) {
-	tlsca.startTLSCAP(srv)
-	tlsca.startTLSCAA(srv)
+	tlsca.startTLSCAP(srv) // 启动TLSCAP服务
+	tlsca.startTLSCAA(srv) // 启动TLSCAA服务
 
 	tlscaLogger.Info("TLSCA started.")
 }
 
+// 启动TLSCAP服务
 func (tlsca *TLSCA) startTLSCAP(srv *grpc.Server) {
 	pb.RegisterTLSCAPServer(srv, &TLSCAP{tlsca})
 }
 
+// 启动TLSCAA服务
 func (tlsca *TLSCA) startTLSCAA(srv *grpc.Server) {
 	pb.RegisterTLSCAAServer(srv, &TLSCAA{tlsca})
 }
 
-// Stop stops the TCA services.
+// Stop stops the TCA services. 停止TCA服务
 func (tlsca *TLSCA) Stop() error {
 	tlscaLogger.Info("Stopping the TLSCA services...")
 	if tlsca.gRPCServer != nil {
@@ -100,7 +103,7 @@ func (tlsca *TLSCA) Stop() error {
 }
 
 // ReadCACertificate reads the certificate of the TLSCA.
-//
+// 读取TLSCA的证书
 func (tlscap *TLSCAP) ReadCACertificate(ctx context.Context, in *pb.Empty) (*pb.Cert, error) {
 	tlscaLogger.Debug("grpc TLSCAP:ReadCACertificate")
 
@@ -108,28 +111,29 @@ func (tlscap *TLSCAP) ReadCACertificate(ctx context.Context, in *pb.Empty) (*pb.
 }
 
 // CreateCertificate requests the creation of a new enrollment certificate by the TLSCA.
-//
+// 请求TLSCA创建新的注册证书。
 func (tlscap *TLSCAP) CreateCertificate(ctx context.Context, in *pb.TLSCertCreateReq) (*pb.TLSCertCreateResp, error) {
 	tlscaLogger.Debug("grpc TLSCAP:CreateCertificate")
 
 	id := in.Id.Id
 
 	sig := in.Sig
-	in.Sig = nil
+	in.Sig = nil // 清除签名
 
 	r, s := big.NewInt(0), big.NewInt(0)
 	r.UnmarshalText(sig.R)
-	s.UnmarshalText(sig.S)
+	s.UnmarshalText(sig.S) // 获取签名
 
-	raw := in.Pub.Key
-	if in.Pub.Type != pb.CryptoType_ECDSA {
+	raw := in.Pub.Key                       // 获取公钥
+	if in.Pub.Type != pb.CryptoType_ECDSA { // 判断加密类型
 		return nil, errors.New("unsupported key type")
 	}
-	pub, err := x509.ParsePKIXPublicKey(in.Pub.Key)
+	pub, err := x509.ParsePKIXPublicKey(in.Pub.Key) // 解析公钥
 	if err != nil {
 		return nil, err
 	}
 
+	// 验证签名
 	hash := primitives.NewHash()
 	raw, _ = proto.Marshal(in)
 	hash.Write(raw)
@@ -137,6 +141,7 @@ func (tlscap *TLSCAP) CreateCertificate(ctx context.Context, in *pb.TLSCertCreat
 		return nil, errors.New("signature does not verify")
 	}
 
+	// 创建证书
 	if raw, err = tlscap.tlsca.createCertificate(id, pub.(*ecdsa.PublicKey), x509.KeyUsageDigitalSignature, in.Ts.Seconds, nil); err != nil {
 		tlscaLogger.Error(err)
 		return nil, err
@@ -146,11 +151,11 @@ func (tlscap *TLSCAP) CreateCertificate(ctx context.Context, in *pb.TLSCertCreat
 }
 
 // ReadCertificate reads an enrollment certificate from the TLSCA.
-//
+// 从TLSCA读取注册证书
 func (tlscap *TLSCAP) ReadCertificate(ctx context.Context, in *pb.TLSCertReadReq) (*pb.Cert, error) {
 	tlscaLogger.Debug("grpc TLSCAP:ReadCertificate")
 
-	raw, err := tlscap.tlsca.readCertificateByKeyUsage(in.Id.Id, x509.KeyUsageKeyAgreement)
+	raw, err := tlscap.tlsca.readCertificateByKeyUsage(in.Id.Id, x509.KeyUsageKeyAgreement) // 读取证书
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +164,7 @@ func (tlscap *TLSCAP) ReadCertificate(ctx context.Context, in *pb.TLSCertReadReq
 }
 
 // RevokeCertificate revokes a certificate from the TLSCA.  Not yet implemented.
-//
+// 未实现
 func (tlscap *TLSCAP) RevokeCertificate(context.Context, *pb.TLSCertRevokeReq) (*pb.CAStatus, error) {
 	tlscaLogger.Debug("grpc TLSCAP:RevokeCertificate")
 
@@ -167,7 +172,7 @@ func (tlscap *TLSCAP) RevokeCertificate(context.Context, *pb.TLSCertRevokeReq) (
 }
 
 // RevokeCertificate revokes a certificate from the TLSCA.  Not yet implemented.
-//
+// 未实现
 func (tlscaa *TLSCAA) RevokeCertificate(context.Context, *pb.TLSCertRevokeReq) (*pb.CAStatus, error) {
 	tlscaLogger.Debug("grpc TLSCAA:RevokeCertificate")
 

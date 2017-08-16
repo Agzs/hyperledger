@@ -26,7 +26,7 @@ import (
 
 var tcaaLogger = logging.MustGetLogger("tcaa")
 
-// TCAA serves the administrator GRPC interface of the TCA.
+// TCAA serves the administrator GRPC interface of the TCA. 功能均未实现
 type TCAA struct {
 	tca *TCA
 }

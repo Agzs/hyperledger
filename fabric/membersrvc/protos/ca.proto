@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-syntax = "proto3";
+syntax = "proto3";  // 指定版本,注意proto3与proto2的写法有些不同
 
 package protos;
 
@@ -22,66 +22,68 @@ import "google/protobuf/timestamp.proto";
 
 
 // Enrollment Certificate Authority (ECA).
-//
+// 注册CA所提供的服务
 service ECAP { // public service
-	rpc ReadCACertificate(Empty) returns (Cert);
-	rpc CreateCertificatePair(ECertCreateReq) returns (ECertCreateResp);
-	rpc ReadCertificatePair(ECertReadReq) returns (CertPair);
-	rpc ReadCertificateByHash(Hash) returns (Cert);
-	rpc RevokeCertificatePair(ECertRevokeReq) returns (CAStatus); // a user can revoke only his/her own cert
+	rpc ReadCACertificate(Empty) returns (Cert);                         // 读取CA证书，参数为Empty, 返回值为Cert
+	rpc CreateCertificatePair(ECertCreateReq) returns (ECertCreateResp); // 创建证书对
+	rpc ReadCertificatePair(ECertReadReq) returns (CertPair);            // 读取证书对
+	rpc ReadCertificateByHash(Hash) returns (Cert);                      // 通过hash值读取证书
+	rpc RevokeCertificatePair(ECertRevokeReq) returns (CAStatus);        // a user can revoke only his/her own cert
 }
 
 service ECAA { // admin service
-	rpc RegisterUser(RegisterUserReq) returns (Token);
-	rpc ReadUserSet(ReadUserSetReq) returns (UserSet);
-	rpc RevokeCertificate(ECertRevokeReq) returns (CAStatus); // an admin can revoke any cert
-	rpc PublishCRL(ECertCRLReq) returns (CAStatus); // publishes CRL in the blockchain
+	rpc RegisterUser(RegisterUserReq) returns (Token);                   // 注册用户
+	rpc ReadUserSet(ReadUserSetReq) returns (UserSet);                   // 读取用户集 
+	rpc RevokeCertificate(ECertRevokeReq) returns (CAStatus);            // an admin can revoke any cert
+	rpc PublishCRL(ECertCRLReq) returns (CAStatus);                      // publishes CRL in the blockchain
 }
 
 // Transaction Certificate Authority (TCA).
-//
+// 交易CA提供的服务
 service TCAP { // public service
-	rpc ReadCACertificate(Empty) returns (Cert);
-	rpc CreateCertificateSet(TCertCreateSetReq) returns (TCertCreateSetResp);
-	rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // a user can revoke only his/her cert
-	rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // a user can revoke only his/her certs
+	rpc ReadCACertificate(Empty) returns (Cert);                              // 读取CA证书
+	rpc CreateCertificateSet(TCertCreateSetReq) returns (TCertCreateSetResp); // 创建证书集
+	rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus);                 // a user can revoke only his/her cert
+	rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus);           // a user can revoke only his/her certs
 }
 
 service TCAA { // admin service
-	rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus); // an admin can revoke any cert
-	rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus); // an admin can revoke any cert
-	rpc PublishCRL(TCertCRLReq) returns (CAStatus); // publishes CRL in the blockchain
+	rpc RevokeCertificate(TCertRevokeReq) returns (CAStatus);             // an admin can revoke any cert
+	rpc RevokeCertificateSet(TCertRevokeSetReq) returns (CAStatus);       // an admin can revoke any certs
+	rpc PublishCRL(TCertCRLReq) returns (CAStatus);                       // publishes CRL in the blockchain
 }
 
 // TLS Certificate Authority (TLSCA)
-//
+// TLS CA提供的服务
 service TLSCAP { // public service
-	rpc ReadCACertificate(Empty) returns (Cert);
-	rpc CreateCertificate(TLSCertCreateReq) returns (TLSCertCreateResp);
-	rpc ReadCertificate(TLSCertReadReq) returns (Cert);
-	rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); // a user can revoke only his/her cert
+	rpc ReadCACertificate(Empty) returns (Cert);                           // 读取CA证书
+	rpc CreateCertificate(TLSCertCreateReq) returns (TLSCertCreateResp);   // 创建证书
+	rpc ReadCertificate(TLSCertReadReq) returns (Cert);                    // 读取证书
+	rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus);            // a user can revoke only his/her cert
 }
 
 service TLSCAA { // admin service
-	rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus); // an admin can revoke any cert
+	rpc RevokeCertificate(TLSCertRevokeReq) returns (CAStatus);            // an admin can revoke any cert
 }
 
 // Attribute Certificate Authority (ACA).
-//
+// 属性CA所提供的服务
 service ACAP { // public service
-	rpc ReadCACertificate(Empty) returns (Cert);
-	rpc RequestAttributes(ACAAttrReq) returns (ACAAttrResp);
-	rpc FetchAttributes(ACAFetchAttrReq) returns (ACAFetchAttrResp);
+	rpc ReadCACertificate(Empty) returns (Cert);                           // 读取CA证书
+	rpc RequestAttributes(ACAAttrReq) returns (ACAAttrResp);               // 请求属性
+	rpc FetchAttributes(ACAFetchAttrReq) returns (ACAFetchAttrResp);       // 获取属性
 }
 
+// 以下是通过上面服务所用到的变量定义说明的
+
 // Status codes shared by both CAs.
-//
-message CAStatus {
-	enum StatusCode {
+// 共享状态代码
+message CAStatus {      // 对应.pb.go中的机构体 type CAStaus struct
+	enum StatusCode {   // 枚举
 		OK = 0;
 		UNKNOWN_ERROR = 1;
 	}
-	StatusCode status = 1;
+	StatusCode status = 1; // 字段标识码为1
 }
 
 
@@ -91,253 +93,252 @@ message Empty {
 
 // Uniquely identifies a user towards either CA.
 message Identity {
-	string id = 1;
+	string id = 1;   // 身份表示，字段标识码为1
 }
 
 message Token {
-	bytes tok = 1;
+	bytes tok = 1;   // 字段标识码为1
 }
 
-message Hash {
-	bytes hash = 1;
+message Hash { 
+	bytes hash = 1;   // 证书哈希值，字段标识码为1
 }
 
 // Public/private keys.
-enum CryptoType {
-	ECDSA = 0;
-	RSA = 1;
-	DSA = 2;
+enum CryptoType { // 加密类型
+	ECDSA = 0;    // 字段标识码为0
+	RSA = 1;      // 字段标识码为1
+	DSA = 2;      // 字段标识码为2
 }
 
-message PublicKey {
-	CryptoType type = 1;
-	bytes key = 2; // DER / ASN.1
+message PublicKey {       // 公钥
+	CryptoType type = 1;  // 加密类型，字段标识码为1
+	bytes key = 2;        // key值的 DER / ASN.1 编码
 }
 
-message PrivateKey {
-	CryptoType type = 1;
-	bytes key = 2; // DER / ASN.1
+message PrivateKey {      // 私钥
+	CryptoType type = 1;  // 加密类型，字段标识码为1
+	bytes key = 2;        // key值的 DER / ASN.1 编码
 }
 
 // Signature.
-//
+//  签名
 message Signature {
-	CryptoType type = 1;
-	bytes r = 2;
-	bytes s = 3;
+	CryptoType type = 1;  // 加密类型
+	bytes r = 2;          // 签名内容r
+	bytes s = 3;          // 签名内容s
 }
 
 // User registration.
-//
-enum Role {
-	NONE = 0;
-	CLIENT = 1; // powers of 2 to | different roles
-	PEER = 2;
-	VALIDATOR = 4;
-	AUDITOR = 8;
-	ALL = 0xFFFF;
+// 用户注册
+enum Role {           // 角色枚举，全局可用
+	NONE = 0;         // 什么都不是
+	CLIENT = 1;       // client, powers of 2 to | different roles
+	PEER = 2;         // peer
+	VALIDATOR = 4;    // validator
+	AUDITOR = 8;      // auditor
+	ALL = 0xFFFF;     // all
 }
 
-message Registrar {
+message Registrar {                             // 注册用户
     Identity id = 1;                            // The identity of the registrar
-    repeated string roles = 2;                  // Roles that the registrar can register
+    repeated string roles = 2;                  // Roles that the registrar can register, repeated选项代表可重复添加
     repeated string delegateRoles = 3;          // Roles that the registrar can give to another to register
 }
 
-message RegisterUserReq {
-    Identity id = 1;
-    Role role = 2;
-    repeated Attribute attributes = 3;
-    string affiliation = 4;
-    Registrar registrar = 5;
-    Signature sig = 6;
+message RegisterUserReq {                       // 注册用户的请求
+    Identity id = 1;                            //  注册用户的身份id
+    Role role = 2;                              //  注册用户的类型
+    repeated Attribute attributes = 3;          //  注册用户的属性，repeated选项代表可重复添加   
+    string affiliation = 4;                     //  注册用户隶属关系
+    Registrar registrar = 5;                    //  注册用户实例
+    Signature sig = 6;                          //  注册用户的签名
 }
 
-message Attribute {
-    string name = 1;
-    string value = 2;
-	 string notBefore = 3;
-	 string notAfter = 4;
+message Attribute {                             // 属性
+    string name = 1;                            // 属性名称
+    string value = 2;                           // 属性值
+	string notBefore = 3;                       // 生效时间  
+	string notAfter = 4;                        // 失效时间
 }
 
-message ReadUserSetReq {
-	Identity req = 1;
-	Role role = 2; // bitmask
-	Signature sig = 3; // sign(priv, req | id | role)
+message ReadUserSetReq {                        // 读取用户集的请求
+	Identity req = 1;                           // 身份表示
+	Role role = 2;                              // 所代表的角色， bitmask
+	Signature sig = 3;                          // sign(priv, req | id | role)
 }
 
-message User {
-	Identity id = 1;
-	Role role = 2;
+message User {                                  // 用户
+	Identity id = 1;                            // 身份标识
+	Role role = 2;                              // 用户角色
 }
 
-message UserSet {
-	repeated User users = 1;
+message UserSet {                               // 用户集
+	repeated User users = 1;                    // 用户，repeated选项代表可重复添加   
 }
 
 // Certificate requests.
-//
-message ECertCreateReq {
-	google.protobuf.Timestamp ts = 1;
-	Identity id = 2;
-	Token tok = 3;
-	PublicKey sign = 4;
-	PublicKey enc = 5;
-	Signature sig = 6; // sign(priv, ts | id | tok | sign | enc)
+// 证书请求
+message ECertCreateReq {                        // ECert创建的请求
+	google.protobuf.Timestamp ts = 1;           // 时间戳
+	Identity id = 2;                            // 调用者身份标识
+	Token tok = 3;                              // 
+	PublicKey sign = 4;                         // 验证签名用的公钥
+	PublicKey enc = 5;                          // 对称加密用的密钥
+	Signature sig = 6;                          // sign(priv, ts | id | tok | sign | enc)
 }
 
-message ECertCreateResp {
-	CertPair certs = 1;
-	Token chain = 2;
-	bytes pkchain = 5;
-	Token tok = 3;
-	FetchAttrsResult fetchResult = 4;
+message ECertCreateResp {                       // ECert创建的响应
+	CertPair certs = 1;                         // 证书对
+	Token chain = 2;                            // 
+	bytes pkchain = 5;                          // 
+	Token tok = 3;                              // 
+	FetchAttrsResult fetchResult = 4;           // 匹配的属性集
 }
 
-message ECertReadReq {
+message ECertReadReq {                           // ECert读取的请求
 	Identity id = 1;
 }
 
-message ECertRevokeReq {
-	Identity id = 1; // user or admin whereby users can only revoke their own cert
-	Cert cert = 2; // cert to revoke
-	Signature sig = 3; // sign(priv, id | cert)
+message ECertRevokeReq {                         // ECert撤销的请求
+	Identity id = 1;                             // user or admin whereby users can only revoke their own cert
+	Cert cert = 2;                               // cert to revoke
+	Signature sig = 3;                           // sign(priv, id | cert)
 }
 
-message ECertCRLReq {
-	Identity id = 1; // admin
-	Signature sig = 2; // sign(priv, id)
+message ECertCRLReq {                            // 读取ECert CRL的请求
+	Identity id = 1;                             // admin
+	Signature sig = 2;                           // sign(priv, id)
 }
 
-message TCertCreateReq {
-	google.protobuf.Timestamp ts = 1;
-	Identity id = 2; // corresponding ECert retrieved from ECA
-	PublicKey pub = 3;
-	Signature sig = 4; // sign(priv, ts | id | pub)
+message TCertCreateReq {                         // TCert创建的请求 
+	google.protobuf.Timestamp ts = 1;            // 时间戳
+	Identity id = 2;                             // corresponding ECert retrieved from ECA
+	PublicKey pub = 3;                           // 验证签名用的公钥
+	Signature sig = 4;                           // sign(priv, ts | id | pub)
 }
 
-message TCertCreateResp {
+message TCertCreateResp {                        // TCert创建的响应
 	Cert cert = 1;
 }
 
-message TCertCreateSetReq {
-	google.protobuf.Timestamp ts = 1;
-	Identity id = 2; // corresponding ECert retrieved from ECA
-	uint32 num = 3; // number of certs to create
-	repeated TCertAttribute attributes = 4; // array with the attributes to add to each TCert.
-	Signature sig = 5; // sign(priv, ts | id | attributes | num)
+message TCertCreateSetReq {                      // TCert集创建的请求
+	google.protobuf.Timestamp ts = 1;            // 时间戳
+	Identity id = 2;                             // corresponding ECert retrieved from ECA
+	uint32 num = 3;                              // number of certs to create
+	repeated TCertAttribute attributes = 4;      // array with the attributes to add to each TCert.
+	Signature sig = 5;                           // sign(priv, ts | id | attributes | num)
 }
 
-message TCertAttribute {
+message TCertAttribute {                         // TCert属性
 	string attributeName = 1;
 }
 
-message TCertCreateSetResp {
+message TCertCreateSetResp {                     // TCert集创建的响应
 	CertSet certs = 1;
 }
 
-message TCertReadSetsReq {
-	google.protobuf.Timestamp begin = 1;
-	google.protobuf.Timestamp end = 2;
-	Identity req = 3; // corresponding ECert retrieved from ECA
-	Role role = 4; // bitmask
-	Signature sig = 5; // sign(priv, begin | end | req | id | role)
+message TCertReadSetsReq {                     // TCert集读取的请求
+	google.protobuf.Timestamp begin = 1;       // TCert的起始时间
+	google.protobuf.Timestamp end = 2;         // TCert的过期时间
+	Identity req = 3;                          // corresponding ECert retrieved from ECA
+	Role role = 4;                             // 调用者的身份标识， bitmask
+	Signature sig = 5;                         // sign(priv, begin | end | req | id | role)
 }
 
-message TCertRevokeReq {
-	Identity id = 1; // user or admin whereby users can only revoke their own certs
-	Cert cert = 2; // cert to revoke
-	Signature sig = 3; // sign(priv, id | cert)
+message TCertRevokeReq {                    // TCert撤销的请求
+	Identity id = 1;                        // user or admin whereby users can only revoke their own certs
+	Cert cert = 2;                          // cert to revoke
+	Signature sig = 3;                      // sign(priv, id | cert)
 }
 
-message TCertRevokeSetReq {
-	Identity id = 1; // user or admin whereby users can only revoke their own certs
-	google.protobuf.Timestamp ts = 2; // timestamp of cert set to revoke (0 == latest set)
-	Signature sig = 3; // sign(priv, id | cert)
+message TCertRevokeSetReq {                 // TCert集撤销的请求
+	Identity id = 1;                        // user or admin whereby users can only revoke their own certs
+	google.protobuf.Timestamp ts = 2;       // timestamp of cert set to revoke (0 == latest set)
+	Signature sig = 3;                      // sign(priv, id | cert)
 }
 
-message TCertCRLReq {
-	Identity id = 1; // admin
-	Signature sig = 2; // sign(priv, id)
+message TCertCRLReq {                       // TCert CRL的请求
+	Identity id = 1;                        // admin
+	Signature sig = 2;                      // sign(priv, id)
 }
 
-message TLSCertCreateReq {
-	google.protobuf.Timestamp ts = 1;
-	Identity id = 2;
-	PublicKey pub = 3;
-	Signature sig = 4; // sign(priv, ts | id | pub)
+message TLSCertCreateReq {                  // TLSCert创建的请求
+	google.protobuf.Timestamp ts = 1;       // 时间戳
+	Identity id = 2;                        // 调用者身份
+	PublicKey pub = 3;                      // 验证签名用的公钥
+	Signature sig = 4;                      // sign(priv, ts | id | pub)
 }
 
-message TLSCertCreateResp {
-	Cert cert = 1;
-	Cert rootCert = 2;
+message TLSCertCreateResp {                  // TLSCert创建的响应
+	Cert cert = 1;                           // 创建的TLSCert
+	Cert rootCert = 2;                       // 根证书
 }
 
-message TLSCertReadReq {
+message TLSCertReadReq {                    // TLSCert读取的请求
 	Identity id = 1;
 }
 
-message TLSCertRevokeReq {
-	Identity id = 1; // user or admin whereby users can only revoke their own cert
-	Cert cert = 2; // cert to revoke
-	Signature sig = 3; // sign(priv, id | cert)
+message TLSCertRevokeReq {                  // TLSCert撤销的请求
+	Identity id = 1;                        // user or admin whereby users can only revoke their own cert
+	Cert cert = 2;                          // cert to revoke
+	Signature sig = 3;                      // sign(priv, id | cert)
 }
 
 // Certificate issued by either the ECA or TCA.
-//
-message Cert {
-	bytes cert = 1; // DER / ASN.1 encoded
+// 
+message Cert {                // 证书
+	bytes cert = 1;           // 内容的 DER / ASN.1 编码
 }
 
 // TCert
 //
 message TCert {
-	bytes cert = 1; // DER / ASN.1 encoded
-	bytes prek0 = 2; // PreK0 used to derive the keys to encrypt the TCert extensions (EnrollmentID, TCertIndex and attributes)
+	bytes cert = 1;     // DER / ASN.1 encoded
+	bytes prek0 = 2;    // PreK0 used to derive the keys to encrypt the TCert extensions (EnrollmentID, TCertIndex and attributes)
 }
 
-message CertSet {
-	google.protobuf.Timestamp ts = 1;
-	Identity id = 2;
-	bytes key = 3;
-	repeated TCert certs = 4;
+message CertSet {                              // 证书集
+	google.protobuf.Timestamp ts = 1;          // 时间戳
+	Identity id = 2;                           // 身份标识
+	bytes key = 3;                             // 密钥
+	repeated TCert certs = 4;                  // Tcert集
 }
 
-message CertSets {
+message CertSets {                             // 证书集组
 	repeated CertSet sets = 1;
 }
 
-message CertPair {
-	bytes sign = 1; // signature certificate, DER / ASN.1 encoded
-	bytes enc = 2; // encryption certificate, DER / ASN.1 encoded
+message CertPair {                // 证书对
+	bytes sign = 1;               // signature certificate, DER / ASN.1 encoded
+	bytes enc = 2;                // encryption certificate, DER / ASN.1 encoded
 }
 
 //ACAAttrReq is sent to request an ACert (attributes certificate) to the Attribute Certificate Authority (ACA).
-message ACAAttrReq {
+message ACAAttrReq {                        // ACA属性的请求
 	// Request time
-	google.protobuf.Timestamp ts = 1;
+	google.protobuf.Timestamp ts = 1;       // 时间戳
 	// User identity
-	Identity id = 2;
+	Identity id = 2;                        // 身份标识
 	// Enrollment certificate
-	Cert eCert = 3;
+	Cert eCert = 3;                         // ECert
 	// Collection of requested attributes including the attribute name and its respective value hash.
-	repeated TCertAttribute attributes = 4; // array with the pairs key/value-hash of each attribute.
-	// The request is signed by the TCA.
-	Signature signature = 5;
+	repeated TCertAttribute attributes = 4;  // array with the pairs key/value-hash of each attribute.
+	Signature signature = 5;                 // The request is signed by the TCA.
 }
 
 //ACAAttrResp is the response of Attribute Certificate Authority (ACA) to the attribute request. Is composed by the following fields:
-message ACAAttrResp {
+message ACAAttrResp {                        // ACA属性的请求的响应
 	enum StatusCode {
-	// Processed OK and all attributes included.
+	// Processed OK and all attributes included. 进程未出错，包含所有属性
  	FULL_SUCCESSFUL     = 000;
 	// Processed OK  but some attributes included.
  	PARTIAL_SUCCESSFUL  = 001;
 	// Processed OK  but no attributes included.
 	NO_ATTRIBUTES_FOUND = 010;
 
-	// Processed with errors.
-	option allow_alias = true;
+	// Processed with errors. 进程出错
+	option allow_alias = true;   // proto3自带，为不同的枚举常量分配相同的值来定义别名。
 	FAILURE_MINVAL = 100;
 	FAILURE = 100;
 	BAD_REQUEST = 200;
@@ -350,60 +351,43 @@ message ACAAttrResp {
 
 	FAILURE_MAXVAL = 205;
 	}
-	// Indicates the request process status.
-	StatusCode status = 1;
-	// Attribute certificate. Include all the attributes certificated.
-	Cert cert = 2;
-	// The response is signed by the ACA.
-	Signature signature = 3;
+	
+	StatusCode status = 1;                         // Indicates the request process status.	
+	Cert cert = 2;                                 // Attribute certificate. Include all the attributes certificated.	 
+	Signature signature = 3;                       // The response is signed by the ACA.
 }
 
 //ACAFetchAttrReq is a request to the Attribute Certificate Authority (ACA) to refresh attributes values from the sources.
-message ACAFetchAttrReq {
-	// Request timestamp
-	google.protobuf.Timestamp ts = 1;
-	// Enrollment certificate.
-	Cert eCert = 2;
-	// The request is signed by the ECA.
-	Signature signature = 3;
+message ACAFetchAttrReq {	
+	google.protobuf.Timestamp ts = 1;        // Request timestamp	
+	Cert eCert = 2;                          // Enrollment certificate	
+	Signature signature = 3;                 // The request is signed by the ECA.
 }
 
 //ACAFetchAttrReq is the answer of the Attribute Certificate Authority (ACA) to the refresh request.
 message ACAFetchAttrResp {
-	enum StatusCode {
-	   // Processed OK
-       SUCCESS = 000;
-       // Processed with errors.
-       FAILURE = 100;
-	}
-	// Status of the fetch process.
-	StatusCode status = 1;
-	// Error message.
-	string Msg = 2;
+	enum StatusCode {	   
+       SUCCESS = 000;                         // Processed OK     
+       FAILURE = 100;                         // Processed with errors.
+	}	
+	StatusCode status = 1;                    // Status of the fetch process.	
+	string Msg = 2;                           // Error message.
 }
 
 //FetchAttrsResult is returned within the ECertCreateResp indicating the results of the fetch attributes invoked during enroll.
 message FetchAttrsResult {
-	enum StatusCode {
-	// Processed OK
-	SUCCESS = 000;
-	// Processed with errors
-	FAILURE = 100;
-	}
-	// Status of the fetch process.
-	StatusCode status = 1;
-	// Error message.
-	string Msg = 2;
+	enum StatusCode {	
+	   SUCCESS = 000;                         // Processed OK	
+	   FAILURE = 100;                         // Processed with errors
+	}	
+	StatusCode status = 1;                    // Status of the fetch process.
+	string Msg = 2;                           // Error message.
 }
 
 //ACAAttribute is an instance of an attribute with the time constraints. Is used to marshal attributes to be stored within the certificate extensions.
-message ACAAttribute {
-	// Name of the attribute.
-	string attributeName = 1;
-	// Value of the attribute.
-	bytes attributeValue = 2;
-	// The timestamp which attribute is valid from.
-	google.protobuf.Timestamp validFrom = 3;
-	// The timestamp which attribute is valid to.
-	google.protobuf.Timestamp validTo = 4;
+message ACAAttribute {	
+	string attributeName = 1;                 // Name of the attribute.	
+	bytes attributeValue = 2;                 // Value of the attribute.	
+	google.protobuf.Timestamp validFrom = 3;  // The timestamp which attribute is valid from.
+	google.protobuf.Timestamp validTo = 4;    // The timestamp which attribute is valid to.
 }
